@@ -1,0 +1,37 @@
+# 默默与幸 —— 生产编排
+#
+# 用法：
+#   1. cp .env.example .env && 填入 SESSION_SECRET
+#   2. docker compose up -d --build
+#
+# 访问：http://<服务器 IP>:5200
+
+services:
+  momo:
+    build:
+      context: .
+    image: momo:latest
+    container_name: momo
+    restart: unless-stopped
+
+    ports:
+      - "5200:3000"
+
+    environment:
+      NODE_ENV: production
+      # SQLite 落在挂载卷里，重建容器不丢数据
+      DIARY_DB_PATH: /app/data/diary.db
+      # 必填 —— 没设会直接报错，避免生产用上随手生成的密钥
+      SESSION_SECRET: ${SESSION_SECRET:?请先创建 .env 并设置 SESSION_SECRET}
+      INVITE_CODES: ${INVITE_CODES:-momo:0}
+      TZ: Asia/Shanghai
+
+    volumes:
+      - ./data:/app/data
+
+    # 40G 的盘经不起日志无限涨，限一下
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

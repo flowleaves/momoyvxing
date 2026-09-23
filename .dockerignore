@@ -1,0 +1,26 @@
+# 构建上下文里不需要的东西 —— 传得越少，build 越快
+
+# 依赖与构建产物（镜像内由各阶段自己生成）
+node_modules
+.next
+
+# 版本控制
+.git
+.gitignore
+.gitattributes
+
+# 本地数据（SQLite 库 + 会话密钥）—— 绝不进镜像
+data
+
+# 本地工具产物
+.workbuddy-ai
+.playwright-cli
+*.log
+
+# 文档与截图（运行时用不到）
+docs
+
+# 编排文件自身
+Dockerfile
+.dockerignore
+docker-compose.yml

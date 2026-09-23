@@ -4,6 +4,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /**
+   * 产出 `.next/standalone` —— 一个自带最小化 node_modules 的可直接运行目录。
+   * 镜像里因此不需要 `npm install`，runner 阶段只拷产物即可。
+   */
+  output: "standalone",
+
+  /**
    * better-sqlite3 是原生模块（.node 二进制），必须交给 Node 运行时直接 require，
    * 不能让 Turbopack 打包——否则构建产物里会出现「找不到 bindings」的运行时报错。
    */
