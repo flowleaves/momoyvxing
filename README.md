@@ -122,11 +122,40 @@ public/avatars/ 6 个手绘 SVG 头像
 
 站名在 `lib/config.ts` 里改（`SITE_NAME`）。
 
-## 部署
+## 部署（Docker）
 
-`npm run build` 产出的 standalone 包可以直接进容器，但注意两点：
+镜像已配好三阶段构建，一条命令即可：
 
-- `data/` 必须挂卷，镜像里**不要**打进去 `*.db` 和 `session.secret`
-- better-sqlite3 是原生模块，构建镜像需要编译工具链（`python3 make g++`）
+```bash
+cp .env.example .env            # 填入 SESSION_SECRET（openssl rand -hex 32）
+docker compose up -d --build
+```
 
-生产环境请通过环境变量设置 `SESSION_SECRET`，别用自动生成的那个。
+默认监听 **5200** 端口，访问 `http://<服务器 IP>:5200`。
+
+几个设计点：
+
+- **数据持久化**：SQLite 库和会话密钥都在 `/app/data`，挂载到宿主机 `./data`。
+  容器重建不丢数据，但**删掉 `./data` 就等于清库**。
+- **非 root 运行**：容器内用 uid 1001 的 `momo` 用户，`/app/data` 已 chown 给它。
+- **健康检查**：每 30 秒探一次 `/login`，连续失败 3 次标记 unhealthy。
+- **日志限流**：json-file 驱动限制 10MB × 3 份，避免日志把盘写满。
+- **better-sqlite3** 是原生模块，`deps` 阶段装 `python3 make g++` 现编，
+  编译工具不会进最终镜像。
+- `SESSION_SECRET` 没设时 compose 直接报错退出 —— 生产环境不该用随手生成的密钥。
+
+常用运维命令：
+
+```bash
+docker compose logs -f          # 看日志
+docker compose restart          # 重启
+docker compose up -d --build    # 改完代码重新构建
+docker compose down             # 停止（数据卷保留）
+```
+
+备份就是拷 `./data` 目录：
+
+```bash
+tar czf momo-backup-$(date +%F).tar.gz data/
+```
+
