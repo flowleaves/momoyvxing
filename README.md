@@ -106,6 +106,7 @@ lib/
   repo/         数据访问层，权限判定在这
   config.ts     站名、皮肤、心情、可见性等常量
 scripts/        seed 与配色检查
+deploy/         备份 / 恢复脚本
 docs/screenshots/ 界面截图
 public/avatars/ 6 个手绘 SVG 头像
 ```
@@ -153,9 +154,61 @@ docker compose up -d --build    # 改完代码重新构建
 docker compose down             # 停止（数据卷保留）
 ```
 
-备份就是拷 `./data` 目录：
+## 备份与恢复
+
+### 为什么不能直接拷 `diary.db`
+
+库跑在 **WAL 模式**（`lib/schema.ts` 里的 `PRAGMA journal_mode = WAL`）。实测部署后的现象：
+
+```
+diary.db        4096 字节    ← 只有文件头，几乎是个空壳
+diary.db-shm   32768 字节    ← 共享内存索引
+diary.db-wal  247232 字节    ← 表结构 + 数据实际都在这里
+```
+
+也就是说，**只拷 `diary.db` 会得到一个几乎是空的库，而且打开时不报错** ——
+这是最危险的那种备份。必须让 SQLite 自己处理 WAL。
+
+`deploy/backup.sh` 走的就是官方在线备份 API（better-sqlite3 的 `db.backup()`），
+它已经在镜像里，不需要额外装 `sqlite3` 命令行工具。
+
+### 备份
 
 ```bash
-tar czf momo-backup-$(date +%F).tar.gz data/
+sh deploy/backup.sh              # 热备，不停机
+KEEP=30 sh deploy/backup.sh      # 保留最近 30 份（默认 14）
+```
+
+产出 `/opt/momo/backups/diary-<时间戳>.db`，单个文件，直接拿走就能用。
+脚本每次备份后会自动跑一遍 `integrity_check` 并打印表数 / 用户数 / 日记数 ——
+没验过的备份等于没有备份。
+
+同时会存一份 `.env`（`env-<时间戳>.bak`，权限 600）。它丢了不会丢数据，
+但所有用户会被强制登出。
+
+### 恢复
+
+```bash
+sh deploy/restore.sh /opt/momo/backups/diary-20260923-163000.db
+```
+
+会先把现有 `data/` 整体挪到 `data.before-restore-<时间戳>/` 留底，再换库。
+脚本里有一条不能省：**清掉旧的 `-wal` / `-shm`** ——
+带着不匹配的 WAL 启动，SQLite 可能按 WAL 里的旧数据把库覆盖回来。
+
+### 定时备份
+
+放在 `/etc/cron.d/momo-backup`，每天 04:00 跑一次：
+
+```
+0 4 * * * root sh /opt/momo/deploy/backup.sh > /var/log/momo-backup.log 2>&1
+```
+
+### 异地留一份
+
+备份文件在服务器本地，服务器整个挂掉就一起没了。定期拉回本地：
+
+```bash
+python xssh.py get /opt/momo/backups/diary-<时间戳>.db ./ --confirm
 ```
 

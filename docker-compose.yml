@@ -28,6 +28,10 @@ services:
 
     volumes:
       - ./data:/app/data
+      # 备份输出目录。容器内的 better-sqlite3 直接把在线备份写到这里，
+      # 落在宿主机 /opt/momo/backups/ 下，随时可以直接拿走。
+      # 不写进 data/ 是为了避免「备份被下一次备份再打包一遍」的递归膨胀。
+      - ./backups:/app/backups
 
     # 40G 的盘经不起日志无限涨，限一下
     logging:

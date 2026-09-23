@@ -49,3 +49,6 @@ next-env.d.ts
 
 # 浏览器自动化缓存
 /.playwright-cli/
+
+# 备份产物（只在服务器上产生，不进仓库）
+/backups/

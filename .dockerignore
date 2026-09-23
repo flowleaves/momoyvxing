@@ -28,3 +28,6 @@ docs
 Dockerfile
 .dockerignore
 docker-compose.yml
+
+# 备份目录（运行时挂载，不进镜像）
+backups
