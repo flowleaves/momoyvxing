@@ -1,0 +1,17 @@
+# 统一换行符为 LF。
+#
+# 项目要部署到 Linux 容器，CRLF 的 Dockerfile / shell 脚本在 Linux 下会直接
+# 执行失败（经典报错：/bin/sh^M: bad interpreter）。Windows 开发时
+# core.autocrlf=true 也会引入不一致，这里显式锁定。
+* text=auto eol=lf
+
+# 二进制文件不做任何换行符转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
