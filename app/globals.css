@@ -1,0 +1,280 @@
+@import "tailwindcss";
+
+/* ============================================================
+   默默与幸 —— 软萌视觉 token
+
+   四套皮肤通过 <html data-theme="..."> 切换。
+   SSR 时直接把主题写进 data-theme，避免首屏闪烁（FOUC）。
+   :root 的默认值 = 草莓牛奶，未设 data-theme 时也能正常显示。
+
+   文字对比度：`python scripts/contrast-check.py` 实测 44 项组合全部 ≥ 4.5:1。
+   注意 --brand-deep 是「文字链接色」，不是装饰色 —— 它必须压暗到满足 AA，
+   所以看起来比 --brand 沉。想改色值请先跑一遍检查脚本。
+   ============================================================ */
+
+:root,
+:root[data-theme="strawberry"] {
+  --brand: #f4a0b8;
+  --brand-soft: #fbd5e0;
+  --brand-deep: #c73e6a;
+  --bg: #fff7f9;
+  --card: #ffffff;
+  --ink: #5c3a45;
+  --ink-soft: #7d5c68;
+  --line: #f5dde5;
+  --shadow: 244 160 184;
+
+  --mood-sakura: #f4a0b8;
+  --mood-mint: #a8d8c0;
+  --mood-cloud: #c5c8d8;
+  --mood-rain: #a8bfd8;
+  --mood-flame: #f0a090;
+  --mood-sunny: #f5ce7a;
+}
+
+:root[data-theme="matcha"] {
+  --brand: #94c28f;
+  --brand-soft: #d9ebd3;
+  --brand-deep: #537b4f;
+  --bg: #f6faf3;
+  --card: #ffffff;
+  --ink: #3e4a3a;
+  --ink-soft: #5f6b5a;
+  --line: #dfead8;
+  --shadow: 143 191 138;
+
+  --mood-sakura: #e8a8b8;
+  --mood-mint: #8fbf8a;
+  --mood-cloud: #c2cab8;
+  --mood-rain: #a0b8c0;
+  --mood-flame: #e0a080;
+  --mood-sunny: #e8c878;
+}
+
+:root[data-theme="starry"] {
+  --brand: #b19be4;
+  --brand-soft: #ded3f7;
+  --brand-deep: #795fc1;
+  --bg: #f7f5fe;
+  --card: #ffffff;
+  --ink: #3e3556;
+  --ink-soft: #5c5273;
+  --line: #e6dff7;
+  --shadow: 164 139 224;
+
+  --mood-sakura: #d8a0c0;
+  --mood-mint: #a0c8b8;
+  --mood-cloud: #c0bcdc;
+  --mood-rain: #9ca8d8;
+  --mood-flame: #dca090;
+  --mood-sunny: #e8c88c;
+}
+
+:root[data-theme="lemon"] {
+  --brand: #f2c75c;
+  --brand-soft: #fceab4;
+  --brand-deep: #8d6f23;
+  --bg: #fffcf2;
+  --card: #ffffff;
+  --ink: #5a4a22;
+  --ink-soft: #7a6636;
+  --line: #f5e6be;
+  --shadow: 242 199 92;
+
+  --mood-sakura: #f0b0a8;
+  --mood-mint: #b8cc98;
+  --mood-cloud: #d0c8a8;
+  --mood-rain: #a8bcc8;
+  --mood-flame: #e8a078;
+  --mood-sunny: #f2c75c;
+}
+
+/* 圆角与间距：软萌的关键是「大圆角 + 松间距」 */
+:root {
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-full: 9999px;
+
+  --font-body: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI",
+    "Microsoft YaHei", ui-rounded, system-ui, -apple-system, sans-serif;
+  /* 圆体：站酷快乐体，只给标题和装饰字用。
+     全字库 4.6MB，但按 unicode-range 切成 188 片，浏览器只下载页面上
+     真正出现的那几片（每片 20-30KB），首屏不会因此变慢。
+     字体没加载出来时自动回落到 --font-body。 */
+  --font-round: "ZCOOL KuaiLe", var(--font-body);
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-deep: var(--brand-deep);
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+
+  --color-mood-sakura: var(--mood-sakura);
+  --color-mood-mint: var(--mood-mint);
+  --color-mood-cloud: var(--mood-cloud);
+  --color-mood-rain: var(--mood-rain);
+  --color-mood-flame: var(--mood-flame);
+  --color-mood-sunny: var(--mood-sunny);
+
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+
+  --font-sans: var(--font-body);
+}
+
+html {
+  /* 主题切换时整体过渡，避免生硬跳变 */
+  transition: background-color 0.25s ease;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+/* 标题用圆体，正文保持系统字体（中文圆体字库太大，只给标题用）。
+   站酷快乐体只有 400 一档字重，显式声明避免浏览器合成伪粗体把字形弄糊。 */
+.font-round,
+h1,
+h2,
+h3 {
+  font-family: var(--font-round);
+  font-weight: 400;
+}
+
+/* 暖色阴影：冷灰阴影会破坏软萌感 */
+.shadow-soft {
+  box-shadow: 0 2px 12px rgb(var(--shadow) / 0.16);
+}
+.shadow-soft-lg {
+  box-shadow: 0 6px 24px rgb(var(--shadow) / 0.22);
+}
+
+/* 纸胶带：斜切的半透明色块，贴在卡片角上 */
+.paper-tape {
+  position: absolute;
+  width: 68px;
+  height: 22px;
+  background: var(--brand-soft);
+  opacity: 0.85;
+  clip-path: polygon(3% 8%, 97% 0%, 100% 92%, 0% 100%);
+  pointer-events: none;
+}
+
+/* 输入框聚焦：柔和的品牌色描边，不要浏览器默认的蓝框 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* 滚动条也软一点 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--brand-soft);
+  border-radius: var(--r-full);
+  border: 3px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Markdown 正文排版 */
+.prose-momo {
+  line-height: 1.75;
+  word-break: break-word;
+}
+.prose-momo p {
+  margin: 0.5em 0;
+}
+.prose-momo h1,
+.prose-momo h2,
+.prose-momo h3 {
+  font-weight: 600;
+  margin: 0.9em 0 0.4em;
+  line-height: 1.4;
+}
+.prose-momo h1 {
+  font-size: 1.35em;
+}
+.prose-momo h2 {
+  font-size: 1.2em;
+}
+.prose-momo h3 {
+  font-size: 1.08em;
+}
+.prose-momo ul,
+.prose-momo ol {
+  padding-left: 1.4em;
+  margin: 0.5em 0;
+}
+.prose-momo ul {
+  list-style: disc;
+}
+.prose-momo ol {
+  list-style: decimal;
+}
+.prose-momo blockquote {
+  border-left: 3px solid var(--brand);
+  padding-left: 0.8em;
+  margin: 0.6em 0;
+  color: var(--ink-soft);
+}
+.prose-momo code {
+  background: var(--brand-soft);
+  padding: 0.1em 0.4em;
+  border-radius: var(--r-xs);
+  font-size: 0.9em;
+}
+.prose-momo pre {
+  background: var(--brand-soft);
+  padding: 0.8em 1em;
+  border-radius: var(--r-sm);
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.prose-momo pre code {
+  background: none;
+  padding: 0;
+}
+.prose-momo a {
+  color: var(--brand-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.prose-momo img {
+  max-width: 100%;
+  border-radius: var(--r-sm);
+}
+.prose-momo hr {
+  border: none;
+  border-top: 1px dashed var(--line);
+  margin: 1em 0;
+}
+.prose-momo table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+}
+.prose-momo th,
+.prose-momo td {
+  border: 1px solid var(--line);
+  padding: 0.3em 0.6em;
+}
