@@ -18,7 +18,6 @@ export function formatTime(iso: string): string {
   const diff = now.getTime() - d.getTime();
   const MIN = 60_000;
   const HOUR = 60 * MIN;
-  const DAY = 24 * HOUR;
 
   if (diff < MIN) return "刚刚";
   if (diff < HOUR) return `${Math.floor(diff / MIN)} 分钟前`;

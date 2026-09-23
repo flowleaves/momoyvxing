@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { MAX_NICKNAME_LENGTH, PRESET_AVATARS, THEMES } from "@/lib/config";
 
@@ -60,10 +60,18 @@ export function ProfileSettings({ user }: { user: ProfileUser }) {
     if (ok) setMsg({ tone: "info", text: "头像换好啦" });
   }
 
+  /**
+   * 主题落在 <html data-theme> 上，用 effect 跟随 state 同步。
+   *
+   * 不要在处理函数里直接写 document.documentElement —— 那样绕过了 React
+   * 的状态流，也会被 react-hooks/immutability 规则拦下。
+   */
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
   async function pickTheme(key: string) {
     setTheme(key);
-    // 先改 DOM，视觉立刻生效，不用等网络往返
-    document.documentElement.dataset.theme = key;
     setMsg(null);
     await patch({ theme: key });
   }

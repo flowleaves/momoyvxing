@@ -60,17 +60,19 @@ export function FollowButton({
 }
 
 export function UserSearch() {
-  const router = useRouter();
   const [q, setQ] = useState("");
   const [users, setUsers] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
 
+  /**
+   * 搜索防抖。
+   *
+   * 清空结果放在 onChange 里做，不在这里 setState ——
+   * effect 内同步 setState 会触发级联渲染（react-hooks/set-state-in-effect）。
+   */
   useEffect(() => {
     const keyword = q.trim();
-    if (!keyword) {
-      setUsers([]);
-      return;
-    }
+    if (!keyword) return;
 
     const timer = setTimeout(async () => {
       setSearching(true);
@@ -94,7 +96,15 @@ export function UserSearch() {
     <div className="space-y-3">
       <Input
         value={q}
-        onChange={(e) => setQ(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setQ(v);
+          // 清空输入时立刻收起结果，不必等 effect 跑
+          if (!v.trim()) {
+            setUsers([]);
+            setSearching(false);
+          }
+        }}
         placeholder="输入昵称或邮箱找人"
       />
 
