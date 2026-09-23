@@ -12,6 +12,10 @@ node_modules
 # 本地数据（SQLite 库 + 会话密钥）—— 绝不进镜像
 data
 
+# 环境变量文件 —— 里面是 SESSION_SECRET，绝不能进镜像层。
+# 运行时由 docker compose 的 environment 注入。
+.env*
+
 # 本地工具产物
 .workbuddy-ai
 .playwright-cli
