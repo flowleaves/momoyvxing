@@ -8,8 +8,16 @@
 # ---------------------------------------------------------------- 依赖
 FROM node:22-bookworm-slim AS deps
 
-# better-sqlite3 要现编原生模块，装完即删 apt 缓存，避免镜像里留垃圾
-RUN apt-get update \
+# 换国内镜像源再装编译工具链。
+#
+# 这台服务器连 deb.debian.org 实测 10s 直接超时（完全不通），清华源 0.5s 响应。
+# 不换源的话 apt-get 会卡十几分钟甚至永远装不完。
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
+      sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources; \
+    else \
+      sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list; \
+    fi \
+ && apt-get update \
  && apt-get install -y --no-install-recommends python3 make g++ \
  && rm -rf /var/lib/apt/lists/*
 
@@ -18,7 +26,8 @@ WORKDIR /app
 # 只拷清单文件，让依赖层能被 Docker 缓存住
 COPY package.json package-lock.json ./
 
-RUN npm ci
+# npm 同样走国内源
+RUN npm ci --registry=https://registry.npmmirror.com
 
 # ---------------------------------------------------------------- 构建
 FROM node:22-bookworm-slim AS builder
@@ -42,9 +51,9 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     DIARY_DB_PATH=/app/data/diary.db
 
-# 不用 root 跑应用
-RUN groupadd -r -g 1001 momo \
- && useradd -r -u 1001 -g momo -s /usr/sbin/nologin momo
+# 不用 root 跑应用（-M：不建 home 目录；uid 1001 属普通用户，故不加 -r）
+RUN groupadd -g 1001 momo \
+ && useradd -u 1001 -g momo -M -s /usr/sbin/nologin momo
 
 # standalone 自带裁剪过的 node_modules，镜像里不需要 npm install
 COPY --from=builder /app/.next/standalone ./
