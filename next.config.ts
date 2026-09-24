@@ -25,11 +25,17 @@ const nextConfig: NextConfig = {
   },
 
   /**
-   * Next 16 默认拦截非 localhost 的 dev 资源请求（HMR websocket 会被拒，
-   * 控制台刷满报错）。用手机连局域网调试时，把电脑的局域网 IP 填进来。
-   * 当前这台机器的局域网地址是 192.168.31.168（`ipconfig` 可查）。
+   * Next 16 默认只认 `localhost` 这个主机名，其它来源一律拦掉 dev 资源
+   * （HMR websocket 握手失败，控制台刷满 ERR_INVALID_HTTP_RESPONSE）。
+   *
+   * ⚠️ 注意 `127.0.0.1` 也算「非 localhost」。踩过一次：用 127.0.0.1 打开页面
+   *    看起来完全正常，但 React 从未 hydration —— 点按钮毫无反应、也没有任何
+   *    报错，排查起来很费劲。所以这里显式放行回环地址，两种写法都能用。
+   *
+   * 用手机连局域网调试时，把电脑的局域网 IP 也加进来
+   * （当前这台是 192.168.31.168，`ipconfig` 可查）。
    */
-  allowedDevOrigins: ["192.168.31.168"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.31.168"],
 };
 
 export default nextConfig;

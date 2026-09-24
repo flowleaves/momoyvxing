@@ -13,8 +13,9 @@ import { cn } from "./ui";
 const NAV = [
   { href: "/", label: "碎碎念" },
   { href: "/new", label: "写日记" },
+  { href: "/my", label: "我的说说" },
   { href: "/friends", label: "好友" },
-  { href: "/me", label: "我的" },
+  { href: "/me", label: "个人设置" },
 ];
 
 function isActive(pathname: string, href: string) {

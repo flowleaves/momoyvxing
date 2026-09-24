@@ -7,7 +7,7 @@ import { requireUserOrRedirect } from "@/lib/guard";
 import { getStats, listTagsWithCount } from "@/lib/repo/diary";
 import { countFriends } from "@/lib/repo/friend";
 
-export const metadata = { title: "我的" };
+export const metadata = { title: "个人设置" };
 
 export default async function MePage() {
   const user = await requireUserOrRedirect();
