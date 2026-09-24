@@ -10,9 +10,13 @@
 |---|---|
 | ![登录页](docs/screenshots/login.png) | ![首页](docs/screenshots/home-mobile.png) |
 
-| 写日记 | 我的 |
+| 写日记 | 个人设置 |
 |---|---|
-| ![编辑器](docs/screenshots/editor.png) | ![我的](docs/screenshots/me.png) |
+| ![编辑器](docs/screenshots/editor.png) | ![个人设置](docs/screenshots/me.png) |
+
+| 我的说说 | 就地编辑 |
+|---|---|
+| ![我的说说](docs/screenshots/my.png) | ![编辑](docs/screenshots/my-edit.png) |
 
 桌面端：![桌面端](docs/screenshots/desktop.png)
 
@@ -43,6 +47,8 @@ npm run db:seed      # 2 个用户互关 + 18 篇日记
 ## 功能
 
 - **碎碎念**：首页一个速记框，想说什么直接写；想认真写就进编辑器，支持 Markdown 与实时预览
+- **我的说说**：列出自己发过的全部说说（含「仅自己」「仅好友」的），
+  可就地改内容和可见范围，也能直接删
 - **三档可见性**：公开 / 仅自己 / 仅好友
 - **好友**：互相关注即成好友，「仅好友可见」的日记只有互关的人能看到
 - **心情色卡**：6 种心情，颜色跟着皮肤走
@@ -97,6 +103,8 @@ npm run solve:color   # 找出满足 AA 且最接近原色的替代色值
 app/            页面与 API 路由
   api/          auth / diaries / drafts / tags / friends / me
   d/[id]/       日记详情
+  my/           我的说说（就地编辑）
+  me/           个人设置
   tags/[name]/  标签筛选
 components/     软萌原子组件（Button/Card/…）与业务组件
 lib/
