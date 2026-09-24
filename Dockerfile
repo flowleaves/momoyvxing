@@ -23,6 +23,13 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then \
 
 WORKDIR /app
 
+# ★ 给 Node 堆加上限。
+# 这台机器只有 1966MB 内存、原本连 swap 都没有。next build（Turbopack）默认
+# 会一路吃满内存把整机拖死 —— SSH 读不到 banner、1Panel 也没反应，
+# 已经因此让用户手动重启过一次。限到 1GB，溢出的部分交给 swap 兜底：
+# 宁可慢几分钟，也不要卡死整机。
+ENV NODE_OPTIONS=--max-old-space-size=1024
+
 # 只拷清单文件，让依赖层能被 Docker 缓存住
 COPY package.json package-lock.json ./
 
@@ -37,7 +44,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS=--max-old-space-size=1024
 RUN npm run build
 
 # ---------------------------------------------------------------- 运行
