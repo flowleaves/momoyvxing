@@ -37,6 +37,20 @@ function visibilityClause(): string {
     )`;
 }
 
+/**
+ * 爱心（已读）聚合列。
+ *
+ * 用两个相关子查询而不是 JOIN + GROUP BY —— 后者在列表里还要和 tags 的
+ * 聚合叠加，很容易写出「笛卡尔积把计数放大」的隐藏 bug。子查询各自独立，
+ * 结果可预期，而且 (diary_id) 上有索引，代价很低。
+ */
+const HEART_COLUMNS = `
+  (SELECT COUNT(*) FROM diary_hearts h WHERE h.diary_id = d.id) AS heart_count,
+  EXISTS (
+    SELECT 1 FROM diary_hearts h2
+     WHERE h2.diary_id = d.id AND h2.user_id = @me
+  ) AS hearted_by_me`;
+
 export interface TimelineOptions {
   viewerId: number;
   limit?: number;
@@ -84,14 +98,15 @@ export function listTimeline(opts: TimelineOptions): DiaryWithMeta[] {
       `SELECT d.*,
               u.nickname    AS author_nickname,
               u.avatar      AS author_avatar,
-              u.avatar_kind AS author_avatar_kind
+              u.avatar_kind AS author_avatar_kind,
+              ${HEART_COLUMNS}
          FROM diaries d
          JOIN users u ON u.id = d.user_id
         WHERE ${where.join(" AND ")}
         ORDER BY d.created_at DESC
         LIMIT @limit`,
     )
-    .all(params) as Array<DiaryRow & {
+    .all(params) as Array<HeartMeta & {
     author_nickname: string;
     author_avatar: string;
     author_avatar_kind: string;
@@ -100,10 +115,13 @@ export function listTimeline(opts: TimelineOptions): DiaryWithMeta[] {
   return attachTags(rows);
 }
 
+/** 带爱心的查询结果行 */
+type HeartMeta = DiaryRow & { heart_count: number; hearted_by_me: number };
+
 /** 给一批日记补上标签数组（一次查询，避免 N+1） */
 function attachTags(
   rows: Array<
-    DiaryRow & {
+    HeartMeta & {
       author_nickname: string;
       author_avatar: string;
       author_avatar_kind: string;
@@ -131,7 +149,12 @@ function attachTags(
     byDiary.set(t.diary_id, list);
   }
 
-  return rows.map((r) => ({ ...r, tags: byDiary.get(r.id) ?? [] }));
+  return rows.map((r) => ({
+    ...r,
+    tags: byDiary.get(r.id) ?? [],
+    heart_count: r.heart_count ?? 0,
+    hearted_by_me: !!r.hearted_by_me,
+  }));
 }
 
 /** 单篇详情。返回 null 表示不存在或无权查看（不区分，避免泄露存在性） */
@@ -144,13 +167,14 @@ export function getDiaryForViewer(
       `SELECT d.*,
               u.nickname    AS author_nickname,
               u.avatar      AS author_avatar,
-              u.avatar_kind AS author_avatar_kind
+              u.avatar_kind AS author_avatar_kind,
+              ${HEART_COLUMNS}
          FROM diaries d
          JOIN users u ON u.id = d.user_id
         WHERE d.id = @id AND ${visibilityClause()}`,
     )
     .all({ id: diaryId, me: viewerId }) as Array<
-    DiaryRow & {
+    HeartMeta & {
       author_nickname: string;
       author_avatar: string;
       author_avatar_kind: string;
@@ -347,4 +371,58 @@ export function getStats(userId: number) {
     .get(userId, monthStart.toISOString()) as { n: number };
 
   return { total: total.n, month: month.n };
+}
+
+// ---------------------------------------------------------------- 爱心（已读）
+
+/**
+ * 切换爱心。
+ *
+ * 权限收敛在这里：只有当 viewer 满足 visibilityClause（能看见这篇说说）时
+ * 才允许操作。作者本人除外 —— 给自己的说说点「已读」没有意义，直接拒绝。
+ *
+ * 返回 null 表示无权操作 / 日记不存在（与「看不见」统一处理，不泄露存在性）。
+ */
+export function toggleHeart(
+  diaryId: number,
+  userId: number,
+): { hearted: boolean; heartCount: number } | null {
+  const db = getDb();
+
+  return tx(db, () => {
+    const visible = db.raw
+      .prepare(
+        `SELECT d.user_id FROM diaries d
+          WHERE d.id = @id AND ${visibilityClause()}`,
+      )
+      .get({ id: diaryId, me: userId }) as { user_id: number } | undefined;
+
+    if (!visible) return null;
+    // 作者不能给自己点爱心（已读回执对自己无意义）
+    if (visible.user_id === userId) return null;
+
+    const existing = db.raw
+      .prepare(
+        `SELECT 1 AS x FROM diary_hearts WHERE diary_id = ? AND user_id = ?`,
+      )
+      .get(diaryId, userId);
+
+    if (existing) {
+      db.raw
+        .prepare(`DELETE FROM diary_hearts WHERE diary_id = ? AND user_id = ?`)
+        .run(diaryId, userId);
+    } else {
+      db.raw
+        .prepare(
+          `INSERT INTO diary_hearts (diary_id, user_id, created_at) VALUES (?, ?, ?)`,
+        )
+        .run(diaryId, userId, now());
+    }
+
+    const count = db.raw
+      .prepare(`SELECT COUNT(*) AS n FROM diary_hearts WHERE diary_id = ?`)
+      .get(diaryId) as { n: number };
+
+    return { hearted: !existing, heartCount: count.n };
+  });
 }

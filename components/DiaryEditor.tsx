@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { MAX_DIARY_LENGTH } from "@/lib/config";
+import { countChars } from "@/lib/format";
 import type { DraftRow } from "@/lib/types";
 
 import { MarkdownView } from "./MarkdownView";
@@ -63,6 +65,10 @@ export function DiaryEditor({
   async function save() {
     const text = content.trim();
     if (!text || busy) return;
+    if (countChars(text) > MAX_DIARY_LENGTH) {
+      setError(`太长了，最多 ${MAX_DIARY_LENGTH} 字`);
+      return;
+    }
 
     setBusy(true);
     setError("");
@@ -173,10 +179,18 @@ export function DiaryEditor({
       {error && <Alert tone="error">{error}</Alert>}
 
       <div className="flex items-center justify-end gap-3">
+        <span className="mr-auto text-xs tabular-nums text-ink-soft">
+          {countChars(content) > 0 ? `${countChars(content)} 字` : ""}
+        </span>
         <span className="hidden text-xs text-ink-soft sm:inline">
           Ctrl + Enter 保存
         </span>
-        <Button size="lg" onClick={save} loading={busy} disabled={!content.trim()}>
+        <Button
+          size="lg"
+          onClick={save}
+          loading={busy}
+          disabled={!content.trim() || countChars(content) > MAX_DIARY_LENGTH}
+        >
           写好了
         </Button>
       </div>

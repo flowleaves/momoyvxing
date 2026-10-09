@@ -16,6 +16,22 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["better-sqlite3"],
 
   /**
+   * ⚠️ 别把本地运行时数据 trace 进 standalone 产物。
+   *
+   * 踩过的坑：`lib/db.ts` 里 `DB_PATH` 默认值写的是 `path.join(process.cwd(), "data", "diary.db")`，
+   * `lib/auth.ts` 里也会读 `data/session.secret` —— Next 的文件追踪把这些字符串
+   * 当成运行时依赖，构建时把 `data/diary.db` 和 `data/session.secret` 一起拷进
+   * `.next/standalone/data/`。而 Dockerfile 是整体 `COPY .next/standalone ./`，
+   * 于是**本地数据库和会话密钥会静默进镜像**。`.dockerignore` 拦不住这一步 ——
+   * 它只作用于构建上下文，管不到 Next 自己的 trace 结果。
+   *
+   * 容器里这两个路径都挂载自宿主机（见 docker-compose），根本不需要打进镜像。
+   */
+  outputFileTracingExcludes: {
+    "*": ["data/**", "backups/**", "docs/**", ".workbuddy-ai/**"],
+  },
+
+  /**
    * 不显式指定 root 时，Turbopack 会一路向上找到 C:\Users\fine 下的
    * package-lock.json，把它当项目根（控制台那条 "ignored package-lock.json"
    * 警告就是这么来的），还会连带扫描整个 home 目录。

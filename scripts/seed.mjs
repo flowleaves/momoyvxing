@@ -12,6 +12,7 @@ import Database from "better-sqlite3";
 const BASE = process.env.BASE_URL || "http://localhost:3000";
 const DB_PATH = process.env.DIARY_DB_PATH || "data/diary.db";
 
+
 async function call(path, { method = "GET", body, cookie } = {}) {
   const res = await fetch(BASE + path, {
     method,
@@ -128,9 +129,42 @@ async function main() {
 
   console.log(`  写入 ${createdIds.length} 条`);
 
+  // 点爱心：两人互给对方的可见说说点一下，模拟「已读」。
+  // 「仅自己」的（visibility=1）对方看不到，跳过 —— 顺便验证权限真的拦住了。
+  console.log("互点爱心…");
+  let hearted = 0;
+  for (const item of createdIds) {
+    const isMomo = item.owner === "默默";
+    const viewer = isMomo ? xing : momo;
+    const res = await call(`/api/diaries/${item.id}/heart`, {
+      method: "POST",
+      cookie: viewer.cookie,
+    });
+    if (res.status === 200 && res.data?.ok) hearted += 1;
+  }
+  console.log(`  点出 ${hearted} 颗爱心（仅自己可见的会被权限拦下，属预期）`);
+
   // 把时间错开，让时间轴看起来像真的（最近 10 天）
+  //
+  // 这一步必须直接改库，所以要求 DIARY_DB_PATH 指向的正是服务器在用的那个库。
+  // 指错了（比如服务器用了别的路径）就不做错开，只警告 —— 别让整条 seed 白跑。
   console.log("调整时间分布…");
-  const db = new Database(DB_PATH);
+  let db;
+  try {
+    db = new Database(DB_PATH, { readonly: false });
+    db.prepare("SELECT 1 FROM diaries LIMIT 1").get();
+  } catch (err) {
+    console.warn(
+      `  跳过：打不开 ${DB_PATH}（${err.code || err.message}）。` +
+        `\n  提示：设 DIARY_DB_PATH 指向服务器实际使用的库文件。`,
+    );
+    if (db) db.close();
+    console.log(
+      "\n完成（数据已写入，只是没错开时间）。登录用：momo@test.com / test123456",
+    );
+    return;
+  }
+
   const nowMs = Date.now();
   createdIds.forEach((item, idx) => {
     const hoursAgo = idx * 13 + (idx % 3) * 2;

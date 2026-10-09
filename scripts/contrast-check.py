@@ -37,6 +37,9 @@ PAIRS = [
     ("报错字 red-600 / 卡片", "red-600", "card"),
     ("报错块 red-700 / red-50", "red-700", "red-50"),
     ("危险按钮 red-800 / red-100", "red-800", "red-100"),
+    ("爱心 heart-ink / heart-soft 底", "heart-ink", "heart-soft"),
+    ("爱心 heart-ink / 卡片", "heart-ink", "card"),
+    ("爱心 heart-ink / 页面 bg", "heart-ink", "bg"),
 ]
 
 
@@ -59,7 +62,12 @@ def ratio(fg, bg):
 
 
 def load_themes(css_path=CSS_PATH):
-    """解析 globals.css，返回 {皮肤名: {变量名: #hex}}。"""
+    """解析 globals.css，返回 {皮肤名: {变量名: #hex}}。
+
+    共享 `:root` 块（default）里的变量会合并进每个皮肤 —— 它们本来就对所有
+    皮肤生效。注意第一个选择器是 `:root, :root[data-theme="strawberry"]`，
+    正则先把它当 default、再当 strawberry，两处内容相同，合并无副作用。
+    """
     css = css_path.read_text(encoding="utf-8")
     themes = {}
     block_re = re.compile(
@@ -71,11 +79,29 @@ def load_themes(css_path=CSS_PATH):
         found = dict(var_re.findall(body))
         if found:
             themes.setdefault(theme, {}).update(found)
+
+    # 其他皮肤继承 default 里没被自己覆盖的变量
+    defaults = themes.get("default", {})
+    for name, theme in themes.items():
+        if name == "default":
+            continue
+        for k, v in defaults.items():
+            theme.setdefault(k, v)
+
+    # default 本身若缺了主题变量（只有共享变量），不作为独立皮肤检查
+    if "ink" not in defaults:
+        themes.pop("default", None)
+
     return themes
 
 
-def resolve(key, theme):
-    return theme.get(key) or TW[key]
+def resolve(key, theme, defaults):
+    """取色值：优先当前皮肤，其次共享 :root（default），最后 Tailwind 固定色。
+
+    共享 :root 里的变量（如 --heart-ink）刻意不随皮肤变，所以任何皮肤都
+    要能回落到它 —— 否则脚本会因为「皮肤里没定义」而误报缺变量。
+    """
+    return theme.get(key) or defaults.get(key) or TW[key]
 
 
 if __name__ == "__main__":
@@ -84,6 +110,7 @@ if __name__ == "__main__":
         raise SystemExit(2)
 
     themes = load_themes()
+    defaults = themes.get("default", {})
     print(f"色值来源：{CSS_PATH.relative_to(CSS_PATH.parent.parent)}")
     print(f"{'皮肤':<12}{'场景':<28}{'比值':>7}  {'AA 4.5':>7}")
     print("-" * 60)
@@ -93,7 +120,10 @@ if __name__ == "__main__":
     for tname, theme in themes.items():
         for label, fgk, bgk in PAIRS:
             try:
-                r = ratio(resolve(fgk, theme), resolve(bgk, theme))
+                r = ratio(
+                    resolve(fgk, theme, defaults),
+                    resolve(bgk, theme, defaults),
+                )
             except KeyError as err:
                 print(f"{tname:<12}{label:<28}  缺变量 {err}", file=sys.stderr)
                 raise SystemExit(2)

@@ -97,6 +97,12 @@
   --r-lg: 24px;
   --r-full: 9999px;
 
+  /* 爱心（已读）：--heart-ink 是文字/图标色，--heart-soft 是胶囊底。
+     刻意放在共享 :root 里、不随皮肤变 —— 爱心是「语义色」（看了/没看），
+     跟着皮肤漂移会让它读起来像装饰。玫瑰红在四套皮肤上实测都达标。 */
+  --heart-ink: #a81f52;
+  --heart-soft: #fce4ec;
+
   --font-body: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei UI",
     "Microsoft YaHei", ui-rounded, system-ui, -apple-system, sans-serif;
   /* 圆体：站酷快乐体，只给标题和装饰字用。
@@ -115,6 +121,8 @@
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-line: var(--line);
+  --color-heart-ink: var(--heart-ink);
+  --color-heart-soft: var(--heart-soft);
 
   --color-mood-sakura: var(--mood-sakura);
   --color-mood-mint: var(--mood-mint);

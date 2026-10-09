@@ -26,6 +26,7 @@ export default async function TagPage({
 
         <Timeline
           items={items}
+          viewerId={user.id}
           emptyTitle={`还没有用过 #${tagName}`}
           emptyDescription="换个标签看看，或者去写一篇"
         />

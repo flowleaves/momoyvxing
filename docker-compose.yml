@@ -1,16 +1,22 @@
-# 默默与幸 —— 生产编排
+# 默默与幸 —— 生产编排（拉取预构建镜像版）
+#
+# 用 GitHub Actions 构建好的镜像，服务器上**不跑 next build**。
+# 生产机只有 1966MB 内存，本地 build 会把它拖死 —— 所以推荐用这个文件。
 #
 # 用法：
-#   1. cp .env.example .env && 填入 SESSION_SECRET
-#   2. docker compose up -d --build
+#   1. cp .env.example .env
+#   2. 往 .env 里填 SESSION_SECRET（openssl rand -hex 32）和 INVITE_CODES
+#   3. 把下面的 image: 换成你自己的 GHCR 地址（全小写）
+#         ghcr.io/flowleaves/momoyvxing:latest
+#   4. 若仓库是私有的，先登录一次：echo <PAT> | docker login ghcr.io -u <用户名> --password-stdin
+#   5. docker compose pull && docker compose up -d
 #
 # 访问：http://<服务器 IP>:5200
 
 services:
   momo:
-    build:
-      context: .
-    image: momo:latest
+    # ★ 改成你的镜像地址。GHCR 要求全小写，仓库名 momoyvxing 本身就是小写。
+    image: ghcr.io/flowleaves/momoyvxing:latest
     container_name: momo
     restart: unless-stopped
 
@@ -29,7 +35,7 @@ services:
     volumes:
       - ./data:/app/data
       # 备份输出目录。容器内的 better-sqlite3 直接把在线备份写到这里，
-      # 落在宿主机 /opt/momo/backups/ 下，随时可以直接拿走。
+      # 落在宿主机 ./backups/ 下，随时可以直接拿走。
       # 不写进 data/ 是为了避免「备份被下一次备份再打包一遍」的递归膨胀。
       - ./backups:/app/backups
 

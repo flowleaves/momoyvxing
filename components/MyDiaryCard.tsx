@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { MAX_DIARY_LENGTH, VISIBILITY_LABELS, findMood } from "@/lib/config";
+import { countChars, formatCharCount, truncate } from "@/lib/format";
 import type { DiaryWithMeta } from "@/lib/types";
 
 import { MarkdownView } from "./MarkdownView";
@@ -24,7 +25,7 @@ import { MoodDot, VisibilityPicker } from "./Pickers";
 import { Alert, Button, cn } from "./ui";
 
 /** 列表里只显示前这么多字，要看全的点「看详情」 */
-const PREVIEW_LIMIT = 500;
+const PREVIEW_LIMIT = 800;
 
 export function MyDiaryCard({
   diary,
@@ -48,10 +49,8 @@ export function MyDiaryCard({
   );
 
   const mood = findMood(diary.mood);
-  const preview =
-    diary.content_md.length > PREVIEW_LIMIT
-      ? `${diary.content_md.slice(0, PREVIEW_LIMIT)}…`
-      : diary.content_md;
+  // 走 lib/format 的安全截断：不会切碎代码块/行内标记，末尾自带上省略号
+  const { text: preview } = truncate(diary.content_md, PREVIEW_LIMIT);
 
   const changed =
     content.trim() !== diary.content_md.trim() || visibility !== diary.visibility;
@@ -76,7 +75,7 @@ export function MyDiaryCard({
       setMsg({ tone: "error", text: "内容不能为空" });
       return;
     }
-    if (next.length > MAX_DIARY_LENGTH) {
+    if (countChars(next) > MAX_DIARY_LENGTH) {
       setMsg({ tone: "error", text: `太长了，最多 ${MAX_DIARY_LENGTH} 字` });
       return;
     }
@@ -200,8 +199,8 @@ export function MyDiaryCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="mr-auto text-xs text-ink-soft">
-              {content.trim().length} 字
+            <span className="mr-auto text-xs tabular-nums text-ink-soft">
+              {content.trim() ? `${countChars(content)} 字` : ""}
             </span>
             <Button variant="ghost" size="sm" onClick={cancelEditor} disabled={busy}>
               取消
@@ -222,9 +221,28 @@ export function MyDiaryCard({
             >
               看详情
             </Link>
+            {/* 自己的说说点不了爱心，只能看谁看过 */}
+            {diary.heart_count > 0 && (
+              <span className="inline-flex items-center gap-1 text-xs text-heart-ink">
+                <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                  className="size-3.5"
+                  fill="currentColor"
+                >
+                  <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 1 0-7.1 7.1l8.8 8.8 8.8-8.8a5 5 0 0 0 0-7.1z" />
+                </svg>
+                {diary.heart_count} 人看过
+              </span>
+            )}
             {diary.tags.length > 0 && (
               <span className="text-xs text-ink-soft">
                 {diary.tags.map((t) => `#${t}`).join("　")}
+              </span>
+            )}
+            {formatCharCount(countChars(diary.content_md)) && (
+              <span className="ml-auto text-[11px] tabular-nums text-ink-soft/70">
+                {formatCharCount(countChars(diary.content_md))}
               </span>
             )}
           </div>

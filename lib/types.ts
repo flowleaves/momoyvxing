@@ -66,10 +66,14 @@ export interface DraftRow {
   updated_at: string;
 }
 
-/** 时间轴条目：日记 + 作者信息 + 标签 */
+/** 时间轴条目：日记 + 作者信息 + 标签 + 爱心（已读）状态 */
 export interface DiaryWithMeta extends DiaryRow {
   author_nickname: string;
   author_avatar: string;
   author_avatar_kind: string;
   tags: string[];
+  /** 爱心（已读）总数 */
+  heart_count: number;
+  /** 当前 viewer 是否已点过爱心 */
+  hearted_by_me: boolean;
 }

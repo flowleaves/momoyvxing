@@ -19,7 +19,7 @@ export default async function HomePage() {
           已经写了 {stats.total} 篇，这个月 {stats.month} 篇
         </p>
 
-        <Timeline items={items} />
+        <Timeline items={items} viewerId={user.id} />
       </div>
     </AppShell>
   );

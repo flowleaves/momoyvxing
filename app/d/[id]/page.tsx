@@ -24,7 +24,7 @@ export default async function DiaryDetailPage({
   return (
     <AppShell user={user}>
       <div className="space-y-4">
-        <DiaryCard diary={diary} linkable={false} />
+        <DiaryCard diary={diary} linkable={false} viewerId={user.id} />
 
         {diary.user_id === user.id && (
           <div className="flex justify-end px-1">

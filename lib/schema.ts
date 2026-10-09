@@ -119,6 +119,21 @@ CREATE TABLE IF NOT EXISTS follows (
 CREATE INDEX IF NOT EXISTS idx_follows_pair ON follows(follower_id, followee_id);
 
 -- ---------------------------------------------------------------
+-- 爱心（已读回执）
+--   语义：好友点一颗爱心 = 「我看过了」。一个用户对一篇说说最多一颗，
+--   再点一次取消（toggle）。
+--   不冗余存 user_id → 权限校验，计数靠 COUNT(*)，避免计数与明细不一致。
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS diary_hearts (
+    diary_id   INTEGER NOT NULL REFERENCES diaries(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+    created_at TEXT    NOT NULL,
+    PRIMARY KEY (diary_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_hearts_diary ON diary_hearts(diary_id);
+CREATE INDEX IF NOT EXISTS idx_hearts_user  ON diary_hearts(user_id);
+
+-- ---------------------------------------------------------------
 -- 审计日志：登录 / 改密 / 注册等关键动作
 -- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_logs (

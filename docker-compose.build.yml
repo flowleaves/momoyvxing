@@ -1,0 +1,43 @@
+# 默默与幸 —— 生产编排（**本地构建**版）
+#
+# 如果你的环境不方便用 CI 镜像（没网 / 没配 GHCR / 就想在这台机器上 build），
+# 用这个文件：docker compose -f docker-compose.build.yml up -d --build
+#
+# ⚠️ 生产机只有 1966MB 内存且原本无 swap，next build（Turbopack）会吃满内存
+#    把整机拖死。Dockerfile 里已把 NODE_OPTIONS 限到 1GB 兜底，但在这台机器上
+#    本地构建仍然很慢、且有把 SSH / 1Panel 一起卡住的风险。
+#    能走 CI 就走 CI（见 docker-compose.yml）。
+#
+# 用法：
+#   1. cp .env.example .env && 填入 SESSION_SECRET
+#   2. docker compose -f docker-compose.build.yml up -d --build
+#
+# 访问：http://<服务器 IP>:5200
+
+services:
+  momo:
+    build:
+      context: .
+    image: momo:latest
+    container_name: momo
+    restart: unless-stopped
+
+    ports:
+      - "5200:3000"
+
+    environment:
+      NODE_ENV: production
+      DIARY_DB_PATH: /app/data/diary.db
+      SESSION_SECRET: ${SESSION_SECRET:?请先创建 .env 并设置 SESSION_SECRET}
+      INVITE_CODES: ${INVITE_CODES:-momo:0}
+      TZ: Asia/Shanghai
+
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

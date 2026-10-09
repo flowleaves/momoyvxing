@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { MAX_DIARY_LENGTH } from "@/lib/config";
+import { countChars } from "@/lib/format";
+
 import { MoodPicker } from "./Pickers";
 import { Button, Card, cn } from "./ui";
 
@@ -22,6 +25,9 @@ export function QuickNote() {
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
   const canSubmit = content.trim().length > 0 && !busy;
+  // 按码点计（emoji 算 1 个），和服务端上限口径一致
+  const charCount = countChars(content);
+  const overLimit = charCount > MAX_DIARY_LENGTH;
 
   async function submit() {
     const text = content.trim();
@@ -91,10 +97,26 @@ export function QuickNote() {
         </button>
 
         <div className="flex items-center gap-3">
+          {charCount > 0 && (
+            <span
+              className={cn(
+                "text-xs tabular-nums",
+                overLimit ? "text-red-600" : "text-ink-soft",
+              )}
+              title={`最多 ${MAX_DIARY_LENGTH} 字`}
+            >
+              {charCount}
+              {overLimit ? ` / ${MAX_DIARY_LENGTH}` : " 字"}
+            </span>
+          )}
           <span className="hidden text-xs text-ink-soft sm:inline">
             Ctrl + Enter 快速保存
           </span>
-          <Button onClick={submit} disabled={!canSubmit} loading={busy}>
+          <Button
+            onClick={submit}
+            disabled={!canSubmit || overLimit}
+            loading={busy}
+          >
             记下来
           </Button>
         </div>
