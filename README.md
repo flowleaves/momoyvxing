@@ -50,6 +50,9 @@ npm run db:seed      # 2 个用户互关 + 18 篇日记
 - **我的说说**：列出自己发过的全部说说（含「仅自己」「仅好友」的），
   可就地改内容和可见范围，也能直接删
 - **三档可见性**：公开 / 仅自己 / 仅好友
+- **爱心（已读）**：好友可以给说说点爱心表示「看过了」，再点取消；
+  自己不能给自己点，无权查看的说说也点不了
+- **字数**：卡片右下角显示本篇共多少字（按 Unicode 码点，emoji 算 1 个字）
 - **好友**：互相关注即成好友，「仅好友可见」的日记只有互关的人能看到
 - **心情色卡**：6 种心情，颜色跟着皮肤走
 - **标签**：给日记打标签，可按标签筛选
@@ -133,12 +136,34 @@ public/avatars/ 6 个手绘 SVG 头像
 
 ## 部署（Docker）
 
-镜像已配好三阶段构建，一条命令即可：
+镜像由 GitHub Actions 自动构建并推送到 GHCR，**服务器上不跑 next build**：
 
 ```bash
 cp .env.example .env            # 填入 SESSION_SECRET（openssl rand -hex 32）
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+`docker-compose.yml` 里的 `image:` 指向 `ghcr.io/flowleaves/momoyvxing:latest`，
+推送到 `main` 或打 `v*` tag 时自动更新。
+
+**GHCR 包默认是私有的**，服务器拉取前要先登录一次：
+
+```bash
+echo <你的 PAT> | docker login ghcr.io -u flowleaves --password-stdin
+```
+
+（PAT 需要 `read:packages` 权限。若把包在 GitHub 上设为 public，这步可省。）
+
+如果不想用 CI，就用本地构建版：
+
+```bash
+docker compose -f docker-compose.build.yml up -d --build
+```
+
+⚠️ 生产机只有 1966MB 内存且原本无 swap，`next build`（Turbopack）会吃满内存把
+整机拖死（Dockerfile 里已把 `NODE_OPTIONS` 限到 1GB 兜底，但仍慢且有卡死风险）。
+**能走 CI 就走 CI。**
 
 默认监听 **5200** 端口，访问 `http://<服务器 IP>:5200`。
 
@@ -152,13 +177,17 @@ docker compose up -d --build
 - **better-sqlite3** 是原生模块，`deps` 阶段装 `python3 make g++` 现编，
   编译工具不会进最终镜像。
 - `SESSION_SECRET` 没设时 compose 直接报错退出 —— 生产环境不该用随手生成的密钥。
+- **镜像不含本地数据**：`next build` 的 file tracing 会把 `data/*.db`、
+  `session.secret` 的路径带进 `.next/standalone/`（`.dockerignore` 拦不住），
+  已在 `next.config.ts` 用 `outputFileTracingExcludes` 排除。
 
 常用运维命令：
 
 ```bash
 docker compose logs -f          # 看日志
 docker compose restart          # 重启
-docker compose up -d --build    # 改完代码重新构建
+docker compose pull             # 拉最新镜像
+docker compose up -d            # 应用更新
 docker compose down             # 停止（数据卷保留）
 ```
 
