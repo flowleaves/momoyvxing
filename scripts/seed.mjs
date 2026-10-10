@@ -144,6 +144,34 @@ async function main() {
   }
   console.log(`  点出 ${hearted} 颗爱心（仅自己可见的会被权限拦下，属预期）`);
 
+  // 写回复：给对方可见的说说回一句，模拟「聊起来」。
+  // 回复时间故意错开，验证列表确实是按时间正序排的。
+  console.log("写回复…");
+  const REPLY_TEXTS = [
+    "哈哈哈这只猫好有主见",
+    "我也遇到过类似的，太可爱了",
+    "记下了，改天也去试试 🌱",
+    "看完了，写得真好",
+    "抱抱，会好起来的",
+  ];
+  let replied = 0;
+  for (let i = 0; i < createdIds.length; i += 3) {
+    const item = createdIds[i];
+    const isMomo = item.owner === "默默";
+    const viewer = isMomo ? xing : momo;
+    // 每篇回 1~2 条（同一个人回两条，验证「一条说说多条回复」的顺序）
+    const n = (i % 2) + 1;
+    for (let k = 0; k < n; k++) {
+      const res = await call(`/api/diaries/${item.id}/replies`, {
+        method: "POST",
+        cookie: viewer.cookie,
+        body: { contentMd: REPLY_TEXTS[(i + k) % REPLY_TEXTS.length] },
+      });
+      if (res.status === 201 && res.data?.ok) replied += 1;
+    }
+  }
+  console.log(`  写了 ${replied} 条回复`);
+
   // 把时间错开，让时间轴看起来像真的（最近 10 天）
   //
   // 这一步必须直接改库，所以要求 DIARY_DB_PATH 指向的正是服务器在用的那个库。
@@ -172,6 +200,24 @@ async function main() {
     db.prepare("UPDATE diaries SET created_at = ?, updated_at = ? WHERE id = ?").run(ts, ts, item.id);
   });
 
+  // 回复时间也必须早于「现在」且晚于所属日记，否则详情页看起来像穿越。
+  // 按 id 顺序每 7 分钟一条，天然正序 —— 正好用来验证列表排序。
+  const replies = db
+    .prepare(`SELECT id, diary_id, created_at FROM diary_replies ORDER BY id`)
+    .all();
+  const diaryTime = new Map(
+    db.prepare(`SELECT id, created_at FROM diaries`).all().map((d) => [d.id, d.created_at]),
+  );
+  replies.forEach((r, idx) => {
+    const base = new Date(diaryTime.get(r.diary_id) ?? nowMs).getTime();
+    const ts = new Date(base + (idx + 1) * 7 * 60 * 1000).toISOString();
+    db.prepare("UPDATE diary_replies SET created_at = ?, updated_at = ? WHERE id = ?").run(
+      ts,
+      ts,
+      r.id,
+    );
+  });
+
   const summary = db
     .prepare(
       `SELECT u.nickname, COUNT(d.id) AS n
@@ -179,10 +225,14 @@ async function main() {
         GROUP BY u.id ORDER BY u.id`,
     )
     .all();
+  const replyTotal = db
+    .prepare(`SELECT COUNT(*) AS n FROM diary_replies WHERE deleted_at IS NULL`)
+    .get();
   db.close();
 
   console.log("\n完成。当前数据：");
   for (const s of summary) console.log(`  ${s.nickname}: ${s.n} 篇`);
+  console.log(`  回复: ${replyTotal.n} 条`);
   console.log("\n登录用：momo@test.com / test123456   或   xing@test.com / test123456");
 }
 

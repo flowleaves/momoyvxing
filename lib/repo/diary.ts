@@ -49,7 +49,9 @@ const HEART_COLUMNS = `
   EXISTS (
     SELECT 1 FROM diary_hearts h2
      WHERE h2.diary_id = d.id AND h2.user_id = @me
-  ) AS hearted_by_me`;
+  ) AS hearted_by_me,
+  (SELECT COUNT(*) FROM diary_replies r
+    WHERE r.diary_id = d.id AND r.deleted_at IS NULL) AS reply_count`;
 
 export interface TimelineOptions {
   viewerId: number;
@@ -115,8 +117,12 @@ export function listTimeline(opts: TimelineOptions): DiaryWithMeta[] {
   return attachTags(rows);
 }
 
-/** 带爱心的查询结果行 */
-type HeartMeta = DiaryRow & { heart_count: number; hearted_by_me: number };
+/** 带爱心 / 回复计数的查询结果行 */
+type HeartMeta = DiaryRow & {
+  heart_count: number;
+  hearted_by_me: number;
+  reply_count: number;
+};
 
 /** 给一批日记补上标签数组（一次查询，避免 N+1） */
 function attachTags(
@@ -154,6 +160,7 @@ function attachTags(
     tags: byDiary.get(r.id) ?? [],
     heart_count: r.heart_count ?? 0,
     hearted_by_me: !!r.hearted_by_me,
+    reply_count: r.reply_count ?? 0,
   }));
 }
 
@@ -425,4 +432,28 @@ export function toggleHeart(
 
     return { hearted: !existing, heartCount: count.n };
   });
+}
+
+// ---------------------------------------------------------------- 可见性（供回复等子资源复用）
+
+/**
+ * 该 viewer 能否看见这篇日记（且日记未删、非草稿）。
+ *
+ * 回复的权限跟着日记走，所以 reply repo 需要这个判定。把它单独导出，
+ * 是为了让「能不能看见」只有一份实现 —— 复制一份 SQL 到别处迟早会写歪。
+ *
+ * 返回日记作者 id；看不见 / 不存在统一返回 null（不泄露存在性）。
+ */
+export function getVisibleDiaryAuthor(
+  diaryId: number,
+  viewerId: number,
+): { authorId: number } | null {
+  const row = getDb()
+    .raw.prepare(
+      `SELECT d.user_id AS authorId FROM diaries d
+        WHERE d.id = @id AND ${visibilityClause()}`,
+    )
+    .get({ id: diaryId, me: viewerId }) as { authorId: number } | undefined;
+
+  return row ?? null;
 }

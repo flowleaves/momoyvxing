@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { Timeline } from "@/components/Timeline";
 import { requireUserOrRedirect } from "@/lib/guard";
 import { listTimeline } from "@/lib/repo/diary";
+import { listRepliesForDiaries } from "@/lib/repo/reply";
 
 export default async function TagPage({
   params,
@@ -13,6 +14,7 @@ export default async function TagPage({
   const tagName = decodeURIComponent(name);
 
   const items = listTimeline({ viewerId: user.id, tagName, limit: 50 });
+  const repliesByDiary = listRepliesForDiaries(items.map((d) => d.id));
 
   return (
     <AppShell user={user}>
@@ -26,7 +28,8 @@ export default async function TagPage({
 
         <Timeline
           items={items}
-          viewerId={user.id}
+          viewer={user}
+          repliesByDiary={repliesByDiary}
           emptyTitle={`还没有用过 #${tagName}`}
           emptyDescription="换个标签看看，或者去写一篇"
         />

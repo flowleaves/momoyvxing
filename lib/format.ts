@@ -70,6 +70,51 @@ export function formatFullTime(iso: string): string {
 }
 
 /**
+ * 精简时间，**可安全用于客户端渲染**。
+ *
+ * ⚠️ 与 formatTime 的区别：这里不做「N 分钟前」这类依赖当前时刻的换算，
+ *    只判断「是不是今天 / 今年」。但即使如此，「今天」仍然依赖**当前日期** ——
+ *    所以第三个参数允许调用方显式传入参照时刻：
+ *      - Server Component：不传，用服务端时间（渲染一次，无 hydration 问题）。
+ *      - Client Component：**必须传**一个稳定值（见 ReplySection 里 useRef）。
+ *        客户端组件会先 SSR 再 hydration，两次 `new Date()` 若跨过午夜就会
+ *        算出不同结果，触发 hydration 不一致警告。传固定值即彻底消除这种可能。
+ */
+export function formatShortTime(iso: string, ref?: Date): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const now = ref ?? new Date();
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) return `今天 ${hm}`;
+
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${hm}`;
+  }
+  return `${d.getFullYear()} 年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+}
+
+/**
+ * 给回复补上服务端算好的时间标签，供客户端直接渲染。
+ *
+ * ⚠️ 只能在 Server Component / Route Handler 里调用 —— 它读当前时间。
+ *    算好后随数据下发，客户端组件就完全不需要碰 Date。
+ */
+export function decorateReplyTimes<
+  T extends { created_at: string },
+>(reply: T): T & { time_label: string; full_time_label: string } {
+  return {
+    ...reply,
+    time_label: formatShortTime(reply.created_at),
+    full_time_label: formatFullTime(reply.created_at),
+  };
+}
+
+/**
  * 截断长文（碎碎念一般很短，超过才截）
  *
  * ⚠️ 不能在任意下标处一刀切。这是 Markdown **源码**，粗暴 slice 会踩三种坑：

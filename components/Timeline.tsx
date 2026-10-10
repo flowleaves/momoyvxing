@@ -8,24 +8,36 @@ import {
   formatTime,
   truncate,
 } from "@/lib/format";
-import type { DiaryWithMeta } from "@/lib/types";
+import type { DiaryWithMeta, ReplyForClient } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
 import { HeartButton } from "./HeartButton";
 import { MarkdownView } from "./MarkdownView";
 import { MoodDot } from "./Pickers";
+import { ReplySection } from "./ReplySection";
 import { EmptyState } from "./ui";
+
+/** 当前登录用户的最小信息，用来渲染回复框的头像与昵称 */
+export interface ViewerInfo {
+  id: number;
+  nickname: string;
+  avatar: string;
+  avatar_kind: string;
+}
 
 export function DiaryCard({
   diary,
   linkable = true,
-  viewerId,
+  viewer,
+  replies,
 }: {
   diary: DiaryWithMeta;
   /** 详情页里不再需要「继续看」链接，同时显示全文不截断 */
   linkable?: boolean;
-  /** 当前登录用户，用来判断是不是自己的说说（自己的不能点爱心） */
-  viewerId: number;
+  /** 当前登录用户，用来判断是不是自己的说说（自己的不能点爱心）+ 回复框 */
+  viewer: ViewerInfo;
+  /** 已加载的回复（按时间正序）。列表页传空数组，详情页传全量 */
+  replies?: ReplyForClient[];
 }) {
   const mood = findMood(diary.mood);
   // 列表里截断 + 给「继续看」；详情页（linkable=false）必须吐全文，
@@ -78,7 +90,7 @@ export function DiaryCard({
           diaryId={diary.id}
           initialCount={diary.heart_count}
           initialHearted={diary.hearted_by_me}
-          isOwn={diary.user_id === viewerId}
+          isOwn={diary.user_id === viewer.id}
         />
         {diary.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -102,18 +114,31 @@ export function DiaryCard({
           </span>
         )}
       </div>
+
+      {/* 回复区。replies 为 undefined 时才不渲染（调用方明确表示这里不该有回复区），
+          传空数组表示「能回复但暂时还没人回」，要显示「回复」入口 */}
+      {replies !== undefined && (
+        <ReplySection
+          diaryId={diary.id}
+          initialReplies={replies}
+          viewer={viewer}
+        />
+      )}
     </article>
   );
 }
 
 export function Timeline({
   items,
-  viewerId,
+  viewer,
+  repliesByDiary,
   emptyTitle = "还没有写过什么",
   emptyDescription = "上面那个框，写点什么就开始啦",
 }: {
   items: DiaryWithMeta[];
-  viewerId: number;
+  viewer: ViewerInfo;
+  /** 每篇日记的回复（key = diary.id）。不传则不渲染回复区 */
+  repliesByDiary?: Map<number, ReplyForClient[]>;
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
@@ -128,7 +153,12 @@ export function Timeline({
   return (
     <div className="space-y-4">
       {items.map((d) => (
-        <DiaryCard key={d.id} diary={d} viewerId={viewerId} />
+        <DiaryCard
+          key={d.id}
+          diary={d}
+          viewer={viewer}
+          replies={repliesByDiary?.get(d.id) ?? (repliesByDiary ? [] : undefined)}
+        />
       ))}
     </div>
   );

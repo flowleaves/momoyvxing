@@ -134,6 +134,25 @@ CREATE INDEX IF NOT EXISTS idx_hearts_diary ON diary_hearts(diary_id);
 CREATE INDEX IF NOT EXISTS idx_hearts_user  ON diary_hearts(user_id);
 
 -- ---------------------------------------------------------------
+-- 回复
+--   语义：针对某篇说说的评论。按 created_at 升序展示（先说的在上面）。
+--   可见性不单独设——回复跟着日记走：能看见日记才能看见它的回复，
+--   判定复用 diary 的 visibilityClause()，不在这一层重复实现。
+--   deleted_at 软删，保持「删掉的回复不改变别人已看到的顺序」。
+-- ---------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS diary_replies (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    diary_id    INTEGER NOT NULL REFERENCES diaries(id) ON DELETE CASCADE,
+    user_id     INTEGER NOT NULL REFERENCES users(id)   ON DELETE CASCADE,
+    content_md  TEXT    NOT NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL,
+    deleted_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_replies_diary ON diary_replies(diary_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_replies_user  ON diary_replies(user_id);
+
+-- ---------------------------------------------------------------
 -- 审计日志：登录 / 改密 / 注册等关键动作
 -- ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_logs (

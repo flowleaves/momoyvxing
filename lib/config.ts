@@ -14,6 +14,7 @@ export const LOGIN_LOCK_MS = 5 * 60 * 1000; // 锁 5 分钟
 
 /** 内容长度上限 */
 export const MAX_DIARY_LENGTH = 20000;
+export const MAX_REPLY_LENGTH = 1000;
 export const MAX_NICKNAME_LENGTH = 20;
 export const MAX_TAG_NAME_LENGTH = 12;
 export const MAX_TAGS_PER_DIARY = 8;

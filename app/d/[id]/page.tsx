@@ -5,6 +5,7 @@ import { DeleteDiaryButton } from "@/components/DeleteDiaryButton";
 import { DiaryCard } from "@/components/Timeline";
 import { requireUserOrRedirect } from "@/lib/guard";
 import { getDiaryForViewer } from "@/lib/repo/diary";
+import { listReplies } from "@/lib/repo/reply";
 
 export default async function DiaryDetailPage({
   params,
@@ -21,10 +22,18 @@ export default async function DiaryDetailPage({
   const diary = getDiaryForViewer(diaryId, user.id);
   if (!diary) notFound();
 
+  // 详情页把回复一次拉全（回复量很小，不需要分页）
+  const replies = listReplies(diaryId, user.id);
+
   return (
     <AppShell user={user}>
       <div className="space-y-4">
-        <DiaryCard diary={diary} linkable={false} viewerId={user.id} />
+        <DiaryCard
+          diary={diary}
+          linkable={false}
+          viewer={user}
+          replies={replies}
+        />
 
         {diary.user_id === user.id && (
           <div className="flex justify-end px-1">
